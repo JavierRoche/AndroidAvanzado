@@ -6,12 +6,14 @@ import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.cocktailclub.R
 import com.example.cocktailclub.common.CustomViewModel
 import com.example.cocktailclub.repository.network.CocktailDBApiService
 import com.example.cocktailclub.repository.network.DrinksItem
 import com.example.cocktailclub.ui.detail.DetailActivity
 import com.google.android.material.snackbar.Snackbar
+
 import kotlinx.android.synthetic.main.main_activity.*
 import kotlinx.android.synthetic.main.main_fragment.*
 import retrofit2.Response
@@ -19,6 +21,8 @@ import retrofit2.Response
 class MainFragment : Fragment(), MainRecyclerAdapter.TapDelegate {
     // Para usar el adaptador y sus layouts
     private lateinit var adapter: MainRecyclerAdapter
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+
     // Instancia del viewModel
     private val viewmodel: MainViewModel by lazy {
         val factory = CustomViewModel(activity!!.application)
@@ -31,7 +35,7 @@ class MainFragment : Fragment(), MainRecyclerAdapter.TapDelegate {
      */
 
     companion object {
-        const val TAG = "MainFragment"
+        const val OBJECT_SERIALIZABLE = "EXTRA_OBJECT_SERIALIZABLE"
         const val onFailureMessage = "Something bad happened. Refresh list."
         // Instancia estatica del fragmento
         fun newInstance(): MainFragment {
@@ -54,18 +58,12 @@ class MainFragment : Fragment(), MainRecyclerAdapter.TapDelegate {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-
-        // Pedimos al viewmodel la lista de cocktails
-        viewmodel.getCocktailsList(object: CocktailDBApiService.CallbackResponse<List<DrinksItem>> {
-            override fun onResponse(response: List<DrinksItem>) {
-                // Comprobamos la BD local antes de informar la UI
-                initUI(viewmodel.checkLocalDB(response))
-            }
-
-            override fun onFailure(t: Throwable, res: Response<*>?) {
-                Snackbar.make(container, onFailureMessage, Snackbar.LENGTH_LONG).show()
-            }
-        })
+        remoteAccess()
+        // Definimos el evento del elemento SwipeRefresh
+        swipeRefreshLayout = view.findViewById(R.id.swipeRefresh)
+        swipeRefreshLayout.setOnRefreshListener{
+            remoteAccess()
+        }
     }
 
 
@@ -86,6 +84,22 @@ class MainFragment : Fragment(), MainRecyclerAdapter.TapDelegate {
      * PRIVATE FUNCTIONS
      */
 
+    private fun remoteAccess() {
+        // Pedimos al viewmodel la lista de cocktails
+        viewmodel.getCocktailsList(object: CocktailDBApiService.CallbackResponse<List<DrinksItem>> {
+            override fun onResponse(response: List<DrinksItem>) {
+                // Comprobamos la BD local antes de informar la UI
+                initUI(viewmodel.checkLocalDB(response))
+                swipeRefreshLayout!!.isRefreshing = false
+            }
+
+            override fun onFailure(t: Throwable, res: Response<*>?) {
+                Snackbar.make(container, onFailureMessage, Snackbar.LENGTH_LONG).show()
+                swipeRefreshLayout!!.isRefreshing = false
+            }
+        })
+    }
+
     private fun initUI(cocktailsList: List<DrinksItem>) {
         activity?.applicationContext?.let { context ->
             // Construimos el adaptador con el contexto, el listener de eventos y la lista de cocktails
@@ -105,7 +119,7 @@ class MainFragment : Fragment(), MainRecyclerAdapter.TapDelegate {
         // Llamamos a la actividad de detalle pasandole el cocktail seleccionado como objeto serializable
         activity?.let {
             Intent(it, DetailActivity::class.java).apply {
-                putExtra(TAG, cocktail)
+                putExtra(OBJECT_SERIALIZABLE, cocktail)
                 it.startActivityForResult(this, 100)
             }
         }

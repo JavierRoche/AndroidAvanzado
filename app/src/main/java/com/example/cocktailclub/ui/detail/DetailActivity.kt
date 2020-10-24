@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.cocktailclub.R
 import com.example.cocktailclub.common.CustomViewModel
 import com.example.cocktailclub.repository.network.DrinksItem
+import com.example.cocktailclub.ui.main.MainFragment
 import kotlinx.android.synthetic.main.detail_activity.*
 
 
@@ -23,7 +24,7 @@ class DetailActivity: AppCompatActivity() {
      */
 
     companion object {
-        const val TAG = "MainFragment"
+        const val OBJECT_SERIALIZABLE = "EXTRA_OBJECT_SERIALIZABLE"
     }
 
 
@@ -35,7 +36,7 @@ class DetailActivity: AppCompatActivity() {
 
         // Intentamos recuperar el cocktail seleccionado
         intent.let {
-            val cocktail: DrinksItem? = it.extras?.getSerializable(TAG) as DrinksItem?
+            val cocktail: DrinksItem? = it.extras?.getSerializable(OBJECT_SERIALIZABLE) as DrinksItem?
             cocktail?.let { it ->
                 // Pintado de la vista mediante el viewmodel
                 viewmodel.cocktail = it
